@@ -1,0 +1,55 @@
+---
+name: security
+
+on:
+  workflow_dispatch:
+
+permissions:
+  # Required to upload SARIF file to CodeQL.
+  actions: read
+  # Require writing security events to upload SARIF file
+  security-events: write
+  # to fetch code (actions/checkout)
+  contents: read
+
+jobs:
+  dependencies-analysis:
+    name: Dependencies Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Run osv-scanner
+        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
+        with:
+          scan-args: |-
+            --format=sarif
+            --output=DependenciesAnalysisFull.sarif
+            ./
+        continue-on-error: true
+
+      - name: Upload SARIF to Security dashboard
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: DependenciesAnalysisFull.sarif
+          category: dependencies-analysis
+
+  source-code-analysis:
+    name: Source Code Analysis
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep@sha256:40579a2e70910d891959a4868711ba0399293949a2f1f141ddb5002d5fc7dd0f
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Run semgrep
+        run: semgrep scan --config=.semgrep --sarif --output=SourceCodeAnalysisFull.sarif .
+        continue-on-error: true
+
+      - name: Upload SARIF to Security dashboard
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: SourceCodeAnalysisFull.sarif
+          category: source-code-analysis
