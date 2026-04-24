@@ -21,8 +21,8 @@ jobs:
         uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
         with:
           scan-args: |-
-            --format sarif
-            --output DependenciesAnalysisAfter.sarif
+            --format=json
+            --output=DependenciesAnalysisAfter.json
             ./
         continue-on-error: true
 
@@ -34,8 +34,8 @@ jobs:
         uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
         with:
           scan-args: |-
-            --format sarif
-            --output DependenciesAnalysisBefore.sarif
+            --format=json
+            --output=DependenciesAnalysisBefore.json
             ./
         continue-on-error: true
 
@@ -43,11 +43,14 @@ jobs:
         uses: google/osv-scanner-action/osv-reporter-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
         with:
           scan-args: |-
-            --new=DependenciesAnalysisAfter.sarif
-            --old=DependenciesAnalysisBefore.sarif
+            --new=DependenciesAnalysisAfter.json
+            --old=DependenciesAnalysisBefore.json
             --output=DependenciesAnalysisDiff.sarif
+            --gh-annotations=false
+            --fail-on-vuln=true
 
       - name: Save differential report
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: DependenciesAnalysisDiff
@@ -64,10 +67,10 @@ jobs:
           fetch-depth: 0
 
       - name: Run differential analysis with semgrep
-        run: semgrep scan --config .semgrep --sarif --output SourceCodeAnalysisDiff.sarif --baseline-commit ${{ github.event.pull_request.base.sha }}
-        continue-on-error: true
+        run: semgrep scan --config .semgrep --error --sarif --output SourceCodeAnalysisDiff.sarif --baseline-commit ${{ github.event.pull_request.base.sha }} .
 
       - name: Save differential report
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: SourceCodeAnalysisDiff
